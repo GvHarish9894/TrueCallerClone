@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
@@ -18,7 +17,10 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -38,6 +40,14 @@ class SystemDialogService : Service(), View.OnTouchListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("MainService", "OnStartCommand")
+
+        intent?.let {
+            val number = it.getStringExtra("number")
+            floatyView?.let{ view->
+                view.findViewById<TextView>(R.id.name).text = if(number != "-1") number else " "
+            }
+        }
         return if (intent == null) {
             START_STICKY_COMPATIBILITY
         } else {
@@ -57,6 +67,7 @@ class SystemDialogService : Service(), View.OnTouchListener {
     override fun onCreate() {
         super.onCreate()
         Log.d("MainService", "OnCreate")
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createChannel(this)
         }
@@ -111,6 +122,22 @@ class SystemDialogService : Service(), View.OnTouchListener {
         val inflater = (getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater)
 
         floatyView = inflater.inflate(R.layout.floating_view, interceptorLayout)
+        floatyView?.let {
+            it.findViewById<ImageView>(R.id.cancel).setOnClickListener {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+
+            it.findViewById<Button>(R.id.view_profile).setOnClickListener {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
+
+            }
+        }
+
         floatyView!!.setOnTouchListener(this)
         windowManager!!.addView(floatyView, params)
     }
@@ -149,7 +176,12 @@ class SystemDialogService : Service(), View.OnTouchListener {
             ContextCompat.startForegroundService(context, intent)
 
             val notification = buildNotification(context)
-            ServiceCompat.startForeground( this, 11, notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            ServiceCompat.startForeground(
+                this,
+                11,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
         } catch (e: Exception) {
             Log.e("CallReceiver", "startForegroundNotification: " + e.message)
         }
